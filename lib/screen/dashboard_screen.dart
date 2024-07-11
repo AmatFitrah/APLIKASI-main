@@ -19,7 +19,7 @@ class DashboardScreen extends StatefulWidget{
 class _DashboardScreenState extends State<DashboardScreen> {
 
   String nik="", token = "", name ="", dept ="", imgUrl="";
-  bool isMasuk = true;
+  late Future<Presensi> futurePresensi;
 
   //get user data
   Future<void> getUserData() async {
@@ -39,7 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  //get presence info
+ //get presence info
   Future<Presensi> fetchPresensi(String nik, String tanggal) async {
     String url = 'https://presensi.spilme.id/presence?nik=$nik&tanggal=$tanggal';
     final response = await http.get(
@@ -48,7 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'Authorization': 'Bearer $token'
       }
     );
-  
+
     if (response.statusCode == 200) {
       return Presensi.fromJson(jsonDecode(response.body));
     } else {
