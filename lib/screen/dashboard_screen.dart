@@ -19,7 +19,7 @@ class DashboardScreen extends StatefulWidget{
 class _DashboardScreenState extends State<DashboardScreen> {
 
   String nik="", token = "", name ="", dept ="", imgUrl="";
-  late Future<Presensi> futurePresensi;
+  bool isMasuk = true;
 
   //get user data
   Future<void> getUserData() async {
@@ -65,11 +65,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
   }
+  // Metode untuk menyimpan status check-in/check-out
+  Future<void> saveStatusMasuk() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('isMasuk', isMasuk);
+  }
+
+  // Metode untuk memuat status check-in/check-out
+  Future<void> loadStatusMasuk() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      isMasuk = prefs.getBool('isMasuk') ?? true;
+    });
+  }
+
+  Future<void> recordAttendance() async {
+    //tutup showbottomsheet
+    Navigator.pop(context);
+    //end point
+    const String endpointMasuk = 'https://presensi.spilme.id/entry';
+    const String endpointKeluar = 'https://presensi.spilme.id/exit';
+
+    final endpoint = isMasuk ? endpointMasuk : endpointKeluar;
+    final requestBody = isMasuk
+        ? {
+            'nik': nik,
+            'tanggal': getTodayDate(),
+            'jam_masuk': getTime(),
+            'lokasi_masuk': 'polbeng',
+          }
+        : {
+            'nik': nik,
+            'tanggal': getTodayDate(),
+            'jam_keluar': getTime(),
+            'lokasi_keluar': 'polbeng',
+          };
+
+    final response = await http.post(
+      Uri.parse(endpoint),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(requestBody),
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(responseBody['message'])),
+      );
+      setState(() {
+        isMasuk = !isMasuk; 
+        saveStatusMasuk(); // simpan status absensi
+      });
+      //refresh informasi absensi
+      fetchPresensi(nik, getTodayDate());
+    } else {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to record attendance')),
+      );
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     getUserData();
+    loadStatusMasuk();
   }
 
   @override
